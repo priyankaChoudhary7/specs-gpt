@@ -11,6 +11,11 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema.document import Document
 
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+import io
+
 # --- Page Configuration ---
 st.set_page_config(
     page_title="Specification Analyzer",
@@ -39,7 +44,7 @@ KEYWORDS_AND_SPECS = {
     },
     "DIVISION 22 (PLUMBING)": {
         "22 60 00 / 22 61 00 / 22 62 00 - GAS AND VACUUM SYSTEMS": {
-            "keywords": "OXYGEN, MEDICAL AIR, VACUUM, GAS OUTLET, BEACON, D.I.S.S., COPPER PIPE",
+            "keywords": "OXYGEN, MEDICAL AIR, VACUUM, GAS OUTLET, BEACON, D.I.S.S., COPPER PIPE, DISS",
             "specifications": ["Gas connection type", "Mention of 'BEACON' brand", "Pipe sizes for Oxygen, Med Air, Vacuum", "Copper pipe type (K or L)"]
         }
     },
@@ -60,8 +65,6 @@ KEYWORDS_AND_SPECS = {
         }
     }
 }
-
-
 # --- Caching for Performance ---
 @st.cache_resource
 def get_llm_and_embeddings():
@@ -202,3 +205,41 @@ if st.session_state.report:
                 st.subheader(section_title)
                 st.markdown(analysis)
                 st.divider()
+
+     # --- DOWNLOAD PDF BUTTON ---
+    def generate_pdf(report_data, timings_data):
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter)
+        styles = getSampleStyleSheet()
+        story = []
+
+        story.append(Paragraph("Specification Analyzer Report", styles["Title"]))
+        story.append(Spacer(1, 12))
+
+        story.append(Paragraph("Performance Breakdown", styles["Heading2"]))
+        total_time = sum(d for _, d in timings_data)
+        for label, duration in timings_data:
+            story.append(Paragraph(f"{label}: {duration:.2f} seconds", styles["Normal"]))
+        story.append(Paragraph(f"<b>Total Processing Time:</b> {total_time:.2f} seconds", styles["Normal"]))
+        story.append(Spacer(1, 12))
+
+        story.append(Paragraph("Analysis Report", styles["Heading2"]))
+        for division, sections in sorted(report_data.items()):
+            story.append(Paragraph(division, styles["Heading3"]))
+            for section_title, analysis in sorted(sections.items()):
+                story.append(Paragraph(f"<b>{section_title}</b>", styles["Heading4"]))
+                story.append(Paragraph(analysis.replace("\n", "<br/>"), styles["Normal"]))
+                story.append(Spacer(1, 12))
+
+        doc.build(story)
+        pdf = buffer.getvalue()
+        buffer.close()
+        return pdf
+
+    pdf_bytes = generate_pdf(st.session_state.report, st.session_state.timings)
+    st.download_button(
+        label="Download Report as PDF",
+        data=pdf_bytes,
+        file_name="specification_analysis_report.pdf",
+        mime="application/pdf"
+    )
