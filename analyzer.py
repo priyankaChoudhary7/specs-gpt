@@ -75,7 +75,7 @@ def get_llm_and_embeddings():
 @st.cache_resource
 def get_vector_store(_embeddings):
     return Chroma(persist_directory=DB_DIRECTORY, embedding_function=_embeddings)
-
+    
 # --- Core Functions ---
 def extract_text_from_pdf(pdf_bytes):
     with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
