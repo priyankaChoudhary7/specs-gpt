@@ -24,10 +24,15 @@ from datetime import datetime
 import gc
 import re
 from typing import List, Dict, Tuple
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+import openpyxl
+from io import BytesIO
+import textwrap
 
 # --- For Re-ranking ---
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import FlashrankRerank
+import html
 
 # --- FIX: Call model_rebuild() for FlashrankRerank ---
 FlashrankRerank.model_rebuild() 
@@ -102,7 +107,7 @@ def get_unique_db_directory(pdf_name):
 
 # --- Keywords and Specifications Structure ---
 KEYWORDS_AND_SPECS = {
-    "DIVISION 06/09 (FINISHES)": {
+    "DIVISION 06 or 09 (FINISHES)": {
         "06 41 00 - ARCHITECTURAL WOOD CASEWORK": {
             "keywords": "ARCHITECTURAL WOOD CASEWORK",
             "specifications": [
@@ -113,7 +118,7 @@ KEYWORDS_AND_SPECS = {
             ]
         }
     },
-    "DIVISION 10/11 (SPECIALTIES)": {
+    "DIVISION 10 or 11 (SPECIALTIES)": {
         "10 25 13 - PATIENT BED SERVICE WALLS": {
             "keywords": "PATIENT BED SERVICE WALLS (PBSW), PRE-FABRICATION, HEADWALL, BED LOCATOR, MODULAR, AMICO, medical gas service panel, patient room console, bed services unit, patient headwall",
             "specifications": [
@@ -316,19 +321,20 @@ def process_and_analyze_pdf(
         
         # Enhanced prompt based on thinking mode
         if thinking_mode == "Deep Analysis":
-            template = """You are an expert construction specification analyst with deep knowledge of building codes and standards.
+            template = """You are an expert construction specification analyst work as an estimator with deep knowledge of headwalls, building codes and standards.
 
 **CRITICAL INSTRUCTIONS:**
-1. Read the ENTIRE CONTEXT carefully and thoroughly. Do not skip any part.
-2. Look for EXACT matches, partial matches, synonyms, and related information.
+1. Read the ENTIRE CONTEXT carefully and thoroughly. Do not skip any part. Specially realted to Headwalls.
+2. Look for exact matches, partial matches, synonyms, related, sematic and contextual information.
 3. Check for information in tables, lists, notes, and running text.
-4. If you find the information, provide SPECIFIC details including:
-   - Exact specifications, model numbers, or brand names
-   - Dimensions, sizes, or quantities when mentioned
-   - Any relevant standards, codes, or requirements
-5. Include the page number reference for each finding: [Page X]
-6. If information is found but incomplete, state what IS found and note what's missing.
+4. If you find the information, provide SPECIFIC details asked in questions including:
+   - Exact specifications, model numbers, or brand names asked in questions.
+   - Dimensions, sizes, or quantities when mentioned related to question.
+   - Any relevant standards, codes, or requirements.
+5. Include the page number reference for each finding: [Page X] [Section Y]
+6. If information is found, then only give the information.
 7. Only say "Information not found" if you've thoroughly checked and found nothing relevant.
+8. Just give me summarized version with page and section and information. Dont repeat content in response.
 
 **THINKING MODE:** Deep Analysis - Be thorough and check multiple times.
 
@@ -455,74 +461,103 @@ Provide a concise answer with page reference [Page X] or state "Information not 
 
 # --- PDF Generation Function ---
 def generate_pdf_with_table(report_df, timings_data, config_info, filename_prefix="specification_analysis_report"):
-    """Generates a PDF report from the analysis DataFrame."""
+    """
+    Generates a robust PDF with a table layout. It uses a single row for most
+    items, but intelligently splits exceptionally long content into multiple
+    rows to prevent LayoutErrors, spanning the cells for a clean look.
+    """
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter)
     styles = getSampleStyleSheet()
     story = []
 
+    # --- Header, Config, and Performance sections (unchanged) ---
     story.append(Paragraph("Enhanced Specification Analyzer Report", styles["Title"]))
     story.append(Spacer(1, 12))
-    
-    # Configuration Info
     story.append(Paragraph("Analysis Configuration", styles["Heading2"]))
     for key, value in config_info.items():
         story.append(Paragraph(f"<b>{key}:</b> {value}", styles["Normal"]))
     story.append(Spacer(1, 12))
-    
-    # Performance Breakdown
     story.append(Paragraph("Performance Breakdown", styles["Heading2"]))
     total_time = sum(d for _, d in timings_data)
     for label, duration in timings_data:
         story.append(Paragraph(f"{label}: {duration:.2f} seconds", styles["Normal"]))
     story.append(Paragraph(f"<b>Total Processing Time:</b> {total_time:.2f} seconds", styles["Normal"]))
     story.append(Spacer(1, 12))
-
     story.append(Paragraph("Analysis Report", styles["Heading2"]))
     story.append(Spacer(1, 12))
 
     if not report_df.empty:
-        for division, division_df in report_df.groupby("Division"):
+        for division, division_df in report_df.groupby("Division", sort=False):
             story.append(Paragraph(f"<b>{division}</b>", styles["Heading3"]))
             story.append(Spacer(1, 6))
 
             table_data = [["Section", "Specification", "Result"]]
-            
-            section_df_sorted = division_df.sort_values(by=["Section", "Specification"])
-            
-            for index, row in section_df_sorted.iterrows():
-                result_text = row["Result"].replace("\n", "<br/>")
+            style_commands = [] # To hold our SPAN commands
+
+            for index, row in division_df.iterrows():
+                # Prepare the full result text
+                safe_text = html.escape(row["Result"])
+                result_text = safe_text.replace('\n', '<br/>')
+
+                # --- HYBRID LOGIC TO PREVENT CRASHES ---
+                # This character limit is a safe guess to prevent a cell from being
+                # taller than a page. 2000 chars is roughly 1/2 to 2/3 of a page.
+                MAX_CHARS_PER_CELL = 2000
                 
-                if "Information not found" in row["Result"]:
-                    table_data.append([
-                        Paragraph(row["Section"], styles["Normal"]),
-                        Paragraph(row["Specification"], styles["Normal"]),
-                        Paragraph(f"<font color='red'>{result_text}</font>", styles["Normal"])
-                    ])
+                chunks_for_this_item = []
+                if len(result_text) > MAX_CHARS_PER_CELL:
+                    # If text is too long, split it into safe-sized chunks
+                    temp_text = result_text
+                    while len(temp_text) > 0:
+                        # Find the last space before the limit to avoid breaking words
+                        break_point = temp_text.rfind(' ', 0, MAX_CHARS_PER_CELL)
+                        if break_point == -1: # No spaces found, must hard break
+                            break_point = MAX_CHARS_PER_CELL
+                        chunks_for_this_item.append(temp_text[:break_point])
+                        temp_text = temp_text[break_point:].lstrip()
                 else:
-                    table_data.append([
-                        Paragraph(row["Section"], styles["Normal"]),
-                        Paragraph(row["Specification"], styles["Normal"]),
-                        Paragraph(result_text, styles["Normal"])
-                    ])
-            
+                    # Text is a normal length, keep it as a single chunk
+                    chunks_for_this_item.append(result_text)
+
+                # --- Add the chunks to the table ---
+                start_row_index = len(table_data)
+                is_first_chunk = True
+                for chunk in chunks_for_this_item:
+                    result_para = Paragraph(
+                        f"<font color='red'>{chunk}</font>" if "Information not found" in row["Result"] else chunk,
+                        styles["Normal"]
+                    )
+                    if is_first_chunk:
+                        table_data.append([Paragraph(row["Section"], styles["Normal"]), Paragraph(row["Specification"], styles["Normal"]), result_para])
+                        is_first_chunk = False
+                    else:
+                        table_data.append(['', '', result_para])
+                
+                # If we created multiple rows for this item, add SPAN commands
+                if len(chunks_for_this_item) > 1:
+                    end_row_index = len(table_data) - 1
+                    style_commands.append(('SPAN', (0, start_row_index), (0, end_row_index)))
+                    style_commands.append(('SPAN', (1, start_row_index), (1, end_row_index)))
+                    # Also vertically align the spanned content to the top
+                    style_commands.append(('VALIGN', (0, start_row_index), (1, end_row_index), 'TOP'))
+
+
             if len(table_data) > 1:
-                col_widths = [1.5*inch, 2.5*inch, 4*inch]
-                table = Table(table_data, colWidths=col_widths)
-                table.setStyle(TableStyle([
+                col_widths = [1.5*inch, 2.5*inch, 3.5*inch]
+                table = Table(table_data, colWidths=col_widths, splitByRow=1)
+                
+                # Base style for the whole table
+                base_style = [
                     ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#ADD8E6')),
                     ('TEXTCOLOR', (0,0), (-1,0), colors.black),
                     ('ALIGN', (0,0), (-1,-1), 'LEFT'),
-                    ('VALIGN', (0,0), (-1,-1), 'TOP'),
+                    ('VALIGN', (0,1), (-1,-1), 'TOP'), # Default VALIGN for all content rows
                     ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-                    ('BOTTOMPADDING', (0,0), (-1,0), 12),
-                    ('BACKGROUND', (0,1), (-1,-1), colors.white),
                     ('GRID', (0,0), (-1,-1), 1, colors.HexColor('#D3D3D3')),
-                    ('LEFTPADDING', (0,0), (-1,-1), 6),
-                    ('RIGHTPADDING', (0,0), (-1,-1), 6),
-                    ('TOPPADDING', (0,0), (-1,-1), 6),
-                    ('BOTTOMPADDING', (0,0), (-1,-1), 6),
-                ]))
+                ]
+                table.setStyle(TableStyle(base_style + style_commands))
+                
                 story.append(table)
                 story.append(Spacer(1, 24))
 
@@ -530,7 +565,6 @@ def generate_pdf_with_table(report_df, timings_data, config_info, filename_prefi
     pdf = buffer.getvalue()
     buffer.close()
     return pdf
-
 # --- Streamlit UI ---
 st.title("📋 Enhanced Specification Analyzer V3")
 st.markdown("Advanced AI-powered construction specification analysis with configurable settings")
@@ -549,7 +583,7 @@ with st.sidebar:
     
     generative_model = st.selectbox(
         "Generative Model",
-        ["llama3:8b", "llama3:70b", "mistral", "mixtral"],
+        ["llama3:8b", "llama3:70b", "mistral", "mixtral","gpt-oss"],
         index=0,
         help="Model for analysis and text generation"
     )
@@ -886,8 +920,7 @@ if st.session_state.report_df is not None and not st.session_state.report_df.emp
     with col2:
         # Excel Download (if openpyxl available)
         try:
-            import openpyxl
-            from io import BytesIO
+
             excel_buffer = BytesIO()
             with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
                 filtered_df.to_excel(writer, index=False, sheet_name='Analysis')
