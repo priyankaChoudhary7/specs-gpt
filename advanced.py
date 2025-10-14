@@ -525,7 +525,7 @@ def generate_pdf_with_table(report_df, timings_data, config_info, filename_prefi
                 is_first_chunk = True
                 for chunk in chunks_for_this_item:
                     result_para = Paragraph(
-                        f"<font color='red'>{chunk}</font>" if "Information not found" in row["Result"] else chunk,
+                        f"<font color='#0D6ABF'>{chunk}</font>" if "Information not found" or "No specific" in row["Result"] else chunk,
                         styles["Normal"]
                     )
                     if is_first_chunk:
@@ -566,7 +566,7 @@ def generate_pdf_with_table(report_df, timings_data, config_info, filename_prefi
     buffer.close()
     return pdf
 # --- Streamlit UI ---
-st.title("📋 Enhanced Specification Analyzer V3")
+st.title("Enhanced Specification Analyzer V3")
 st.markdown("Advanced AI-powered construction specification analysis with configurable settings")
 
 # --- SIDEBAR CONFIGURATION ---
@@ -629,7 +629,7 @@ with st.sidebar:
     st.subheader("Analysis Mode")
     thinking_mode = st.radio(
         "Thinking Mode",
-        ["Fast", "Balanced", "Deep Analysis"],
+        ["Balanced","Deep Analysis", "Fast" ],
         index=1,
         help="Controls thoroughness vs speed of analysis"
     )
@@ -689,7 +689,7 @@ col1, col2 = st.columns([2, 1])
 
 with col1:
     uploaded_file = st.file_uploader(
-        "📄 Upload Construction Specification PDF",
+        "Upload Specification PDF",
         type="pdf",
         help="Upload a complete specification document"
     )
@@ -699,10 +699,10 @@ with col2:
     st.metric("Chunk Size", f"{chunk_size} chars")
 
 if uploaded_file is not None:
-    st.info(f"📁 **File:** {uploaded_file.name} ({uploaded_file.size / 1024 / 1024:.2f} MB)")
+    st.info(f"**File:** {uploaded_file.name} ({uploaded_file.size / 1024 / 1024:.2f} MB)")
     
     if st.button(
-        f"🚀 Analyze '{uploaded_file.name}'",
+        f"Analyze '{uploaded_file.name}'",
         type="primary",
         use_container_width=True,
         help="Start comprehensive specification analysis"
@@ -784,7 +784,7 @@ if uploaded_file is not None:
 if st.session_state.report_df is not None and not st.session_state.report_df.empty:
     
     # Statistics Dashboard
-    st.header("📊 Analysis Statistics")
+    st.header("Analysis Statistics")
     col1, col2, col3, col4 = st.columns(4)
     
     stats = st.session_state.analysis_stats
@@ -800,7 +800,7 @@ if st.session_state.report_df is not None and not st.session_state.report_df.emp
         st.metric("Processing Time", f"{total_time:.1f}s")
     
     # Performance Breakdown
-    st.header("⚡ Performance Breakdown")
+    st.header("Performance Breakdown")
     with st.container(border=True):
         perf_col1, perf_col2 = st.columns(2)
         
@@ -819,7 +819,7 @@ if st.session_state.report_df is not None and not st.session_state.report_df.emp
         st.metric("**Total Processing Time**", f"{total_time:.2f} seconds")
 
     # Analysis Report
-    st.header("📋 Detailed Analysis Report")
+    st.header("Detailed Analysis Report")
     
     # Filter options
     col1, col2, col3 = st.columns(3)
@@ -876,7 +876,7 @@ if st.session_state.report_df is not None and not st.session_state.report_df.emp
                         v_str = str(v)
                         if 'Information not found' in v_str:
                             colors.append('background-color: #ffe0e0')
-                        elif '[Page' in v_str:  # Has page reference
+                        elif '[Page' or '(Page' in v_str:  # Has page reference
                             colors.append('background-color: #e0ffe0')
                         else:
                             colors.append('')
@@ -902,7 +902,7 @@ if st.session_state.report_df is not None and not st.session_state.report_df.emp
                 st.markdown("---")
     
     # Export Options
-    st.header("📥 Export Options")
+    st.header("Export Options")
     
     col1, col2, col3 = st.columns(3)
     
@@ -910,7 +910,7 @@ if st.session_state.report_df is not None and not st.session_state.report_df.emp
         # CSV Download
         csv = filtered_df.to_csv(index=False)
         st.download_button(
-            label="📊 Download as CSV",
+            label="Download as CSV",
             data=csv,
             file_name=f"{uploaded_file.name.replace('.pdf', '')}_analysis.csv",
             mime="text/csv",
@@ -927,7 +927,7 @@ if st.session_state.report_df is not None and not st.session_state.report_df.emp
             excel_data = excel_buffer.getvalue()
             
             st.download_button(
-                label="📑 Download as Excel",
+                label="Download as Excel",
                 data=excel_data,
                 file_name=f"{uploaded_file.name.replace('.pdf', '')}_analysis.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -946,7 +946,7 @@ if st.session_state.report_df is not None and not st.session_state.report_df.emp
                 uploaded_file.name.replace(".pdf", "")
             )
             st.download_button(
-                label="📄 Download as PDF Report",
+                label="Download as PDF Report",
                 data=pdf_bytes,
                 file_name=f"{uploaded_file.name.replace('.pdf', '')}_analysis_report.pdf",
                 mime="application/pdf",
@@ -954,19 +954,19 @@ if st.session_state.report_df is not None and not st.session_state.report_df.emp
             )
 
 elif st.session_state.report_df is not None and st.session_state.report_df.empty:
-    st.info("🔍 No analysis results to display. Please upload a PDF and run the analysis.")
+    st.info("No analysis results to display. Please upload a PDF and run the analysis.")
 elif uploaded_file is None:
-    st.info("👆 Upload a construction specification PDF to begin analysis.")
+    st.info("Upload a construction specification PDF to begin analysis.")
     
     # Show feature highlights
     st.markdown("---")
-    st.subheader("✨ Key Features")
+    st.subheader("Key Features")
     
     col1, col2, col3 = st.columns(3)
     
     with col1:
         st.markdown("""
-        **🎯 Enhanced Accuracy**
+        **Enhanced Accuracy**
         - Advanced PDF parsing
         - Smart text extraction
         - Context preservation
@@ -974,7 +974,7 @@ elif uploaded_file is None:
     
     with col2:
         st.markdown("""
-        **⚙️ Full Configurability**
+        **Full Configurability**
         - Adjustable chunking
         - Multiple AI models
         - Custom thinking modes
@@ -982,7 +982,7 @@ elif uploaded_file is None:
     
     with col3:
         st.markdown("""
-        **📊 Comprehensive Reports**
+        **Comprehensive Reports**
         - Detailed findings
         - Page references
         - Multiple export formats
