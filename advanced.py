@@ -133,12 +133,12 @@ KEYWORDS_AND_SPECS = {
     },
     "DIVISION 22 (PLUMBING)": {
         "22 60 00 / 22 61 00 / 22 62 00 - GAS AND VACUUM SYSTEMS": {
-            "keywords": "OXYGEN, MEDICAL AIR, VACUUM, GAS OUTLET, BEACON, D.I.S.S., COPPER PIPE, DISS, medical gas, central vacuum, compressed air, nitrous oxide, nitrogen, WAGD, AGSS, medical gas piping, gas supply",
+            "keywords": "OXYGEN, MEDICAL AIR, VACUUM, GAS OUTLET, BEACON, D.I.S.S., COPPER PIPE, Gas Tube, DISS, medical gas, , MED, MED/OXY, OXYcentral vacuum, compressed air, nitrous oxide, nitrogen, WAGD, AGSS, medical gas piping, gas supply",
             "specifications": [
                 {"question": "Gas connection type", "related_terms": "connection type, DISS, Diameter Index Safety System, quick connect, Puritan-Bennett, Schrader, Chemetron, Ohmeda, NFPA 99 connection, type of outlet, gas terminal unit, gas connection fittings"},
                 {"question": "Mention of 'BEACON' brand", "related_terms": "Beacon, brand, manufacturer, medical gas supplier, alarm panels, BeaconMedaes, Beacon Medical, specified gas supplier"},
-                {"question": "Pipe sizes for Oxygen, Med Air, Vacuum", "related_terms": "pipe size, tubing diameter, oxygen pipe, medical air pipe, vacuum pipe, supply lines, medical gas line dimensions, pipe diameter, sizing of medical gas piping"},
-                {"question": "Copper pipe type (K or L)", "related_terms": "copper pipe type, K-type, L-type, M-type, hard drawn copper, ASTM B819, medical gas tubing specification, copper tubing grade"}
+                {"question": "Pipe/Tube sizes for Oxygen, Med Air, Vacuum", "related_terms": "pipe size, tube size, tubing diameter, oxygen pipe, medical air pipe, vacuum pipe, supply lines, medical gas line dimensions, pipe diameter, sizing of medical gas piping"},
+                {"question": "Copper pipe/tube type (K or L)", "related_terms": "copper pipe type, K-type, L-type, Type L, Type K,  Gas Tube, hard drawn copper, ASTM B819, medical gas tubing specification, copper tubing grade"}
             ]
         }
     },
@@ -148,7 +148,7 @@ KEYWORDS_AND_SPECS = {
             "specifications": [
                 {"question": "What are the conduit size requirements for typical branch circuits?", "related_terms": "conduit size, low voltage, minimum conduit, EMT, raceway size, ½ inch, ¾ inch, 1 inch"},
                 {"question": "What is the back box size specified for 1-gang and 2-gang devices?", "related_terms": "back box, mudring, gang box, device box, junction box, outlet box size"},
-                {"question": "What is the specified back box and mudring size for low voltage systems?", "related_terms": "low voltage box, communication box, data outlet, mud ring size"},
+                {"question": "What is the specified back box and mudring size for low voltage systems?", "related_terms": "low voltage box, communication box, data outlet, mud ring size, back box size, wall boxes sizes, mudring size,  "},
                 {"question": "Is there any specific information on EMT, FMC, or Metal Clad (MC) cable types?", "related_terms": "Electrical Metallic Tubing, Flexible Metal Conduit, MC Cable, armored cable"},
                 {"question": "What are the approved brands for wiring devices and receptacles?", "related_terms": "manufacturer, approved vendor, Leviton, Hubbell, Pass & Seymour, Cooper"},
                 {"question": "What types of receptacles are specified?", "related_terms": "outlet type, standard, GFCI, Ground Fault, tamperproof, tamper resistant, hospital grade, USB"},
@@ -163,7 +163,7 @@ KEYWORDS_AND_SPECS = {
             "specifications": [
                 {"question": "Receptacle brand", "related_terms": "receptacle manufacturer, outlet brand, Hubbell, Leviton, Pass & Seymour, Cooper, specific brand, electrical outlet manufacturer"},
                 {"question": "Receptacle type (Tamperproof, GFCI, etc.)", "related_terms": "receptacle functionality, tamper-resistant, ground fault circuit interrupter, surge protective, isolated ground, standard, hospital grade, patient care area receptacle, duplex outlet, outlet type"},
-                {"question": "Faceplate color and material", "related_terms": "faceplate finish, wall plate color, material, stainless steel, plastic, ivory, white, almond, cover plate, finish of faceplate"},
+                {"question": "Faceplate color and material/Wiring Devices Finishes", "related_terms": "faceplate finish, wall plate color, material, stainless steel, plastic, ivory, white, almond, cover plate, finish of faceplate, wiring device finishes."},
                 {"question": "Switch types", "related_terms": "switch functionality, toggle switch, rocker switch, dimmer switch, occupancy sensor switch, 3-way, 4-way, single pole, double pole, light switch types"}
             ]
         }
@@ -187,7 +187,7 @@ def clear_parent_chroma_db_directory(directory=PARENT_DB_DIRECTORY):
         try:
             shutil.rmtree(directory)
         except Exception as e:
-            st.warning(f"Could not clear old DB directory: {e}")
+             st.warning(f"Could not clear old DB directory: {e}")
     os.makedirs(directory, exist_ok=True)
 
 def format_docs(docs):
@@ -321,8 +321,8 @@ def process_and_analyze_pdf(
         
         # Enhanced prompt based on thinking mode
         if thinking_mode == "Deep Analysis":
-            template = """You are an expert construction specification analyst work as an estimator with deep knowledge of headwalls, building codes and standards.
-
+            template = """You are an expert construction specification analyst and estimator work as an estimator with deep knowledge of headwalls, building codes and standards.
+                        Your task is to extract specific data based on the user's question.
 **CRITICAL INSTRUCTIONS:**
 1. Read the ENTIRE CONTEXT carefully and thoroughly. Do not skip any part. Specially realted to Headwalls.
 2. Look for exact matches, partial matches, synonyms, related, sematic and contextual information.
@@ -335,6 +335,10 @@ def process_and_analyze_pdf(
 6. If information is found, then only give the information.
 7. Only say "Information not found" if you've thoroughly checked and found nothing relevant.
 8. Just give me summarized version with page and section and information. Dont repeat content in response.
+9. Do not repeat response.
+10. Consider "KEYWORDS" also for retrieval.
+
+
 
 **THINKING MODE:** Deep Analysis - Be thorough and check multiple times.
 
@@ -567,7 +571,7 @@ def generate_pdf_with_table(report_df, timings_data, config_info, filename_prefi
     return pdf
 # --- Streamlit UI ---
 st.title("Enhanced Specification Analyzer V3")
-st.markdown("Advanced AI-powered construction specification analysis with configurable settings")
+st.markdown("Advanced AI-powered specification analysis with configurable settings")
 
 # --- SIDEBAR CONFIGURATION ---
 with st.sidebar:
@@ -576,14 +580,14 @@ with st.sidebar:
     st.subheader("Model Settings")
     embedding_model = st.selectbox(
         "Embedding Model",
-        ["mxbai-embed-large", "nomic-embed-text", "all-minilm"],
+        ["granite-embedding:30m","mxbai-embed-large", "nomic-embed-text", "all-minilm"],
         index=0,
         help="Model for converting text to embeddings"
     )
     
     generative_model = st.selectbox(
         "Generative Model",
-        ["llama3:8b", "llama3:70b", "mistral", "mixtral","gpt-oss"],
+        ["granite3.3:8b","llama3:8b", "llama3:70b", "mistral", "mixtral","gpt-oss"],
         index=0,
         help="Model for analysis and text generation"
     )
@@ -591,9 +595,9 @@ with st.sidebar:
     st.subheader("Chunking Parameters")
     chunk_size = st.slider(
         "Chunk Size",
-        min_value=300,
+        min_value=500,
         max_value=1500,
-        value=700,
+        value=1000,
         step=50,
         help="Size of text chunks for processing"
     )
@@ -602,7 +606,7 @@ with st.sidebar:
         "Chunk Overlap",
         min_value=0,
         max_value=500,
-        value=150,
+        value=200,
         step=25,
         help="Overlap between chunks to preserve context"
     )
@@ -634,14 +638,15 @@ with st.sidebar:
         help="Controls thoroughness vs speed of analysis"
     )
     
-    temperature = st.slider(
-        "Model Temperature",
-        min_value=0.0,
-        max_value=1.0,
-        value=0.0,
-        step=0.1,
-        help="Lower = more focused, Higher = more creative"
-    )
+    # temperature = st.slider(
+    #     "Model Temperature",
+    #     min_value=0.0,
+    #     max_value=1.0,
+    #     value=0.0,
+    #     step=0.1,
+    #     help="Lower = more focused, Higher = more creative"
+    # )
+    temperature=0
     
     st.divider()
     
@@ -959,31 +964,31 @@ elif uploaded_file is None:
     st.info("Upload a construction specification PDF to begin analysis.")
     
     # Show feature highlights
-    st.markdown("---")
-    st.subheader("Key Features")
+    # st.markdown("---")
+    # st.subheader("Key Features")
     
-    col1, col2, col3 = st.columns(3)
+    # col1, col2, col3 = st.columns(3)
     
-    with col1:
-        st.markdown("""
-        **Enhanced Accuracy**
-        - Advanced PDF parsing
-        - Smart text extraction
-        - Context preservation
-        """)
+    # with col1:
+    #     st.markdown("""
+    #     **Enhanced Accuracy**
+    #     - Advanced PDF parsing
+    #     - Smart text extraction
+    #     - Context preservation
+    #     """)
     
-    with col2:
-        st.markdown("""
-        **Full Configurability**
-        - Adjustable chunking
-        - Multiple AI models
-        - Custom thinking modes
-        """)
+    # with col2:
+    #     st.markdown("""
+    #     **Full Configurability**
+    #     - Adjustable chunking
+    #     - Multiple AI models
+    #     - Custom thinking modes
+    #     """)
     
-    with col3:
-        st.markdown("""
-        **Comprehensive Reports**
-        - Detailed findings
-        - Page references
-        - Multiple export formats
-        """)
+    # with col3:
+    #     st.markdown("""
+    #     **Comprehensive Reports**
+    #     - Detailed findings
+    #     - Page references
+    #     - Multiple export formats
+    #     """)
