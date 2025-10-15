@@ -241,18 +241,17 @@ def process_and_analyze_pdf(pdf_file, vector_store, llm, embeddings):
         s4_start = time.perf_counter()
         
         # --- NEW ENHANCED PROMPT TEMPLATE for thorough checking ---
-        template = """You are an expert at extracting specific technical information from construction specifications. 
+        template = """You are an expert at extracting specific technical information from specifications documents. 
         Your goal is to accurately identify and extract details related to the user's question from the provided CONTEXT. 
         Perform a thorough check within the context.
 
         **Instructions:**
-        1.  Carefully read and **thoroughly check** all provided CONTEXT.
+        1.  Carefully read and **thoroughly check** all provided CONTEXT, and try to understand the CONTEXT format.
         2.  Answer the QUESTION based **ONLY** on the information explicitly stated or clearly implied in the CONTEXT. Do not make assumptions or infer beyond what is directly supported.
         3.  Look for synonyms, related terms, different phrasing, or descriptions that convey the same meaning as the requested information.
         4.  If the exact information is not found, or cannot be reasonably inferred *even after a thorough check*, state: "Information not found."
         5.  Be concise and provide the most direct answer possible. Do not invent information.
         6.  If a list of items is requested, provide a clear, bulleted list.
-        7. 
 
         CONTEXT: {context}
 

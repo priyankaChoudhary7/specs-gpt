@@ -40,7 +40,7 @@ FlashrankRerank.model_rebuild()
 # --- Page Configuration ---
 st.set_page_config(
     page_title="Enhanced Specification Analyzer",
-    page_icon="📋",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -350,15 +350,18 @@ QUESTION: {questions}
 YOUR DETAILED ANSWER:"""
         
         elif thinking_mode == "Balanced":
-            template = """You are an expert construction specification analyst.
+            template = """You are an expert at extracting specific technical information from specifications documents. 
+        Your goal is to accurately identify and extract details related to the user's question from the provided CONTEXT. 
+        Perform a thorough check within the context.
 
-**INSTRUCTIONS:**
-1. Carefully review all provided CONTEXT.
-2. Answer based on explicit information or clear implications in the CONTEXT.
-3. Look for exact terms, synonyms, and related specifications.
-4. Provide specific details with page references: [Page X]
-5. If partially found, state what IS available and what's missing.
-6. Only state "Information not found" after thorough review.
+        **Instructions:**
+        1.  Carefully read and **thoroughly check** all provided CONTEXT, and try to understand the CONTEXT format.
+        2.  Answer the QUESTION based **ONLY** on the information explicitly stated or clearly implied in the CONTEXT. Do not make assumptions or infer beyond what is directly supported.
+        3.  Look for synonyms, related terms, different phrasing, or descriptions that convey the same meaning as the requested information.
+        4.  If the exact information is not found, or cannot be reasonably inferred *even after a thorough check*, state: "Information not found."
+        5.  Be concise and provide the most direct answer possible. Do not invent information.
+        6.  If a list of items is requested, provide a clear, bulleted list.
+
 
 CONTEXT:
 {context}
@@ -528,14 +531,21 @@ def generate_pdf_with_table(report_df, timings_data, config_info, filename_prefi
                 start_row_index = len(table_data)
                 is_first_chunk = True
                 for chunk in chunks_for_this_item:
-                    result_para = Paragraph(
-                        f"<font color='#0D6ABF'>{chunk}</font>" if "Information not found" or "No specific" in row["Result"] else chunk,
+                     if "Information not found" in row["Result"]:
+                        result_para = Paragraph(
+                        f"<font color='red'>{chunk}</font>",
                         styles["Normal"]
-                    )
-                    if is_first_chunk:
-                        table_data.append([Paragraph(row["Section"], styles["Normal"]), Paragraph(row["Specification"], styles["Normal"]), result_para])
-                        is_first_chunk = False
-                    else:
+                        )
+                     else:
+                        result_para = Paragraph(
+                            chunk,
+                            styles["Normal"]
+                            )
+
+                     if is_first_chunk:
+                         table_data.append([Paragraph(row["Section"], styles["Normal"]), Paragraph(row["Specification"], styles["Normal"]), result_para])
+                         is_first_chunk = False
+                     else:
                         table_data.append(['', '', result_para])
                 
                 # If we created multiple rows for this item, add SPAN commands
@@ -575,19 +585,19 @@ st.markdown("Advanced AI-powered specification analysis with configurable settin
 
 # --- SIDEBAR CONFIGURATION ---
 with st.sidebar:
-    st.header("⚙️ Configuration")
+    st.header("Configuration")
     
     st.subheader("Model Settings")
     embedding_model = st.selectbox(
         "Embedding Model",
-        ["granite-embedding:30m","mxbai-embed-large", "nomic-embed-text", "all-minilm"],
+        ["mxbai-embed-large","granite-embedding:30m", "nomic-embed-text", "all-minilm"],
         index=0,
         help="Model for converting text to embeddings"
     )
     
     generative_model = st.selectbox(
         "Generative Model",
-        ["granite3.3:8b","llama3:8b", "llama3:70b", "mistral", "mixtral","gpt-oss"],
+        ["llama3:8b","granite3.3:8b", "mistral", "mixtral","gpt-oss"],
         index=0,
         help="Model for analysis and text generation"
     )
@@ -650,7 +660,7 @@ with st.sidebar:
     
     st.divider()
     
-    if st.button("🗑️ Clear All Temp DBs", use_container_width=True):
+    if st.button("Clear All Temp DBs", use_container_width=True):
         clear_parent_chroma_db_directory()
         st.success("Cleared temporary databases")
     
@@ -939,7 +949,7 @@ if st.session_state.report_df is not None and not st.session_state.report_df.emp
                 use_container_width=True
             )
         except ImportError:
-            st.button("📑 Excel Export (Not Available)", disabled=True, use_container_width=True)
+            st.button("Excel Export (Not Available)", disabled=True, use_container_width=True)
     
     with col3:
         # PDF Download
@@ -963,32 +973,3 @@ elif st.session_state.report_df is not None and st.session_state.report_df.empty
 elif uploaded_file is None:
     st.info("Upload a construction specification PDF to begin analysis.")
     
-    # Show feature highlights
-    # st.markdown("---")
-    # st.subheader("Key Features")
-    
-    # col1, col2, col3 = st.columns(3)
-    
-    # with col1:
-    #     st.markdown("""
-    #     **Enhanced Accuracy**
-    #     - Advanced PDF parsing
-    #     - Smart text extraction
-    #     - Context preservation
-    #     """)
-    
-    # with col2:
-    #     st.markdown("""
-    #     **Full Configurability**
-    #     - Adjustable chunking
-    #     - Multiple AI models
-    #     - Custom thinking modes
-    #     """)
-    
-    # with col3:
-    #     st.markdown("""
-    #     **Comprehensive Reports**
-    #     - Detailed findings
-    #     - Page references
-    #     - Multiple export formats
-    #     """)
