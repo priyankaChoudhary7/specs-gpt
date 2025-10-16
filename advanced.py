@@ -335,7 +335,7 @@ def process_and_analyze_pdf(
 6. If information is found, then only give the information.
 7. Only say "Information not found" if you've thoroughly checked and found nothing relevant.
 8. Just give me summarized version with page and section and information. Dont repeat content in response.
-9. Do not repeat response.
+9. Do not repeat response and colclude the response.
 10. Consider "KEYWORDS" also for retrieval.
 
 
@@ -972,4 +972,7 @@ elif st.session_state.report_df is not None and st.session_state.report_df.empty
     st.info("No analysis results to display. Please upload a PDF and run the analysis.")
 elif uploaded_file is None:
     st.info("Upload a construction specification PDF to begin analysis.")
+    
+    
+    
     
